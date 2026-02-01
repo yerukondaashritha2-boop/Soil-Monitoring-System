@@ -212,6 +212,7 @@ Electronics & Communication Engineering
 ESP32 | IoT | Embedded Systems
 
 [my portfolio ](https://yerukondaashritha2-boop.github.io/my_portfolio/)
+
 [Email 📧 ](yerukondaashritha2@gmail.com)
 
 ---
