@@ -81,12 +81,14 @@ Upload your images in the repository and update the paths below.
 
 ## 🔌 Circuit Diagram (Live Mode – Optional)
 
-| Component            | ESP32 Pin |
-| -------------------- | --------- |
-| Soil Moisture Sensor | GPIO 34   |
-| Relay Module (Motor) | GPIO 26   |
-| VCC                  | 3.3V / 5V |
-| GND                  | GND       |
+| Component              | ESP32 Pin |
+| ---------------------- | --------- |
+| Soil Moisture (Analog) | GPIO 34   |
+| DHT11 Data             | GPIO 27   |
+| Relay / Motor          | GPIO 26   |
+| VCC                    | 3.3V / 5V |
+| GND                    | GND       |
+
 
 ⚠️ **Note:** Demo mode works without any hardware connections.
 
