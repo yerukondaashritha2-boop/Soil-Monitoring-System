@@ -1,5 +1,5 @@
 
-<img src="https://media.giphy.com/media/U3qYN8S0j3bpK/giphy.gif" width="100%" height="40px" style="object-fit: cover;" />
+<img src="https://media.giphy.com/media/U3qYN8S0j3bpK/giphy.gif" width="100%" height="50px" style="object-fit: cover;" />
 
 
 # 🌱 Soil Monitoring System for Improved Crop Yield
@@ -65,17 +65,10 @@ Upload your images in the repository and update the paths below.
 
 
 
-### 🔹 ESP32 Hardware Setup
-
-```md
-![ESP32 Setup](images/esp32-setup.jpg)
-```
-
 ### 🔹 Circuit Diagram
 
-```md
-![Circuit Diagram](images/circuit-diagram.png)
-```
+<img width="747" height="621" alt="Screenshot 2026-02-01 120121" src="https://github.com/user-attachments/assets/d61a7154-5504-4e38-b093-f7597b5dca84" />
+
 
 ---
 
@@ -214,10 +207,13 @@ Best suited for:
 ## 👨‍💻 Author
 
 **Ashu**
+
 Electronics & Communication Engineering
 ESP32 | IoT | Embedded Systems
 
- [my portfolio ] (https://yerukondaashritha2-boop.github.io/my_portfolio/)
+[my portfolio ](https://yerukondaashritha2-boop.github.io/my_portfolio/)
+[Email 📧 ](yerukondaashritha2@gmail.com)
+
 ---
 
 ## 📜 License
