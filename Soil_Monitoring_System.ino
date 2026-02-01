@@ -1,189 +1,185 @@
 #include <WiFi.h>
 #include <WebServer.h>
+#include <DHT.h>
 
-/* -------- WiFi Credentials -------- */
+/* ------------ WiFi Credentials ------------ */
 const char* ssid = "YOUR_WIFI_SSID";
 const char* password = "YOUR_WIFI_PASSWORD";
 
-WebServer server(80);
+/* ------------ Pin Definitions ------------ */
+#define SOIL_PIN   34
+#define MOTOR_PIN  26
+#define DHT_PIN    27
+#define DHT_TYPE   DHT11
 
-/* -------- Web Page with Fake Data -------- */
+/* ------------ Objects ------------ */
+WebServer server(80);
+DHT dht(DHT_PIN, DHT_TYPE);
+
+/* ------------ System Variables ------------ */
+bool motorState = false;
+bool autoMode = true;
+
+int moisturePercent = 0;
+float temperature = 0;
+float humidity = 0;
+
+const int MOISTURE_THRESHOLD = 40;  // Auto irrigation limit
+
+/* ------------ Read Sensors ------------ */
+void readSensors() {
+  int soilRaw = analogRead(SOIL_PIN);
+  moisturePercent = map(soilRaw, 4095, 0, 0, 100);
+  moisturePercent = constrain(moisturePercent, 0, 100);
+
+  temperature = dht.readTemperature();
+  humidity = dht.readHumidity();
+
+  if (autoMode) {
+    if (moisturePercent < MOISTURE_THRESHOLD) {
+      digitalWrite(MOTOR_PIN, HIGH);
+      motorState = true;
+    } else {
+      digitalWrite(MOTOR_PIN, LOW);
+      motorState = false;
+    }
+  }
+}
+
+/* ------------ Web UI ------------ */
 void handleRoot() {
+  readSensors();
+
+  String status = moisturePercent < MOISTURE_THRESHOLD ? "DRY" : "GOOD";
+  String statusColor = moisturePercent < MOISTURE_THRESHOLD ? "#ff5252" : "#00e676";
 
   String html = R"rawliteral(
 <!DOCTYPE html>
 <html>
 <head>
-<title>Smart Irrigation</title>
+<title>Smart Irrigation MVP</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <style>
-  body{
-    margin:0;
-    font-family:'Segoe UI',sans-serif;
-    background:linear-gradient(135deg,#43cea2,#185a9d);
-    min-height:100vh;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    color:#fff;
-  }
-
-  .card{
-    background:rgba(255,255,255,0.15);
-    backdrop-filter:blur(12px);
-    width:90%;
-    max-width:420px;
-    padding:25px;
-    border-radius:25px;
-    box-shadow:0 20px 40px rgba(0,0,0,0.3);
-    text-align:center;
-  }
-
-  h1{ margin-bottom:15px; }
-
-  .circle{
-    width:180px;
-    height:180px;
-    border-radius:50%;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    margin:20px auto;
-    transition:0.5s;
-  }
-
-  .circle span{
-    background:#111;
-    width:140px;
-    height:140px;
-    border-radius:50%;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-size:30px;
-    font-weight:bold;
-  }
-
-  .status{
-    margin:10px 0;
-    font-size:18px;
-    font-weight:600;
-  }
-
-  .motor{
-    margin:15px 0;
-    font-size:18px;
-  }
-
-  button{
-    width:85%;
-    padding:14px;
-    margin-top:10px;
-    border:none;
-    border-radius:40px;
-    font-size:16px;
-    font-weight:600;
-    cursor:pointer;
-    transition:0.3s;
-  }
-
-  .on{
-    background:linear-gradient(135deg,#00c853,#64dd17);
-    color:white;
-  }
-
-  .off{
-    background:linear-gradient(135deg,#ff1744,#d50000);
-    color:white;
-  }
-
-  footer{
-    margin-top:15px;
-    font-size:12px;
-    opacity:0.8;
-  }
+body{
+  margin:0;
+  font-family:Segoe UI,sans-serif;
+  background:linear-gradient(135deg,#43cea2,#185a9d);
+  min-height:100vh;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  color:white;
+}
+.card{
+  background:rgba(255,255,255,0.15);
+  backdrop-filter:blur(12px);
+  padding:25px;
+  width:90%;
+  max-width:420px;
+  border-radius:25px;
+  box-shadow:0 20px 40px rgba(0,0,0,0.3);
+  text-align:center;
+}
+.circle{
+  width:160px;height:160px;border-radius:50%;
+  background:conic-gradient(#00e676 %MOISTURE%%,rgba(255,255,255,0.2) %MOISTURE%%);
+  display:flex;align-items:center;justify-content:center;
+  margin:15px auto;
+}
+.circle span{
+  background:#111;width:120px;height:120px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:26px;font-weight:bold;
+}
+button{
+  width:90%;padding:14px;margin:8px 0;
+  border:none;border-radius:40px;
+  font-size:16px;font-weight:600;cursor:pointer;
+}
+.on{background:#00c853;color:white;}
+.off{background:#d50000;color:white;}
+.auto{background:#2979ff;color:white;}
 </style>
 </head>
 
 <body>
-
 <div class="card">
-  <h1>🌱 Smart Irrigation (Demo)</h1>
+<h2>🌱 Smart Irrigation (MVP)</h2>
 
-  <div class="circle" id="circle">
-    <span id="moisture">--%</span>
-  </div>
-
-  <div class="status" id="status">STATUS</div>
-
-  <div class="motor">
-    💧 Motor: <b id="motor">--</b>
-  </div>
-
-  <button id="motorBtn">---</button>
-
-  <footer>ESP32 • Fake Data Preview</footer>
+<div class="circle">
+  <span>%MOISTURE%%</span>
 </div>
 
-<script>
-  function updateFakeData(){
-    let moisture = Math.floor(Math.random() * 101);
-    let motorOn = Math.random() > 0.5;
+<p style="color:%COLOR%;font-weight:bold;">STATUS: %STATUS%</p>
 
-    document.getElementById("moisture").innerText = moisture + "%";
+<p>🌡 Temp: <b>%TEMP% °C</b></p>
+<p>💧 Humidity: <b>%HUM% %</b></p>
 
-    document.getElementById("circle").style.background =
-      `conic-gradient(
-        #00e676 ${moisture}%,
-        rgba(255,255,255,0.2) ${moisture}%
-      )`;
+<p>🚿 Motor: <b>%MOTOR%</b></p>
+<p>🤖 Mode: <b>%MODE%</b></p>
 
-    let statusText = moisture < 40 ? "DRY – Water Needed" : "GOOD – Moisture OK";
-    let statusColor = moisture < 40 ? "#ff5252" : "#69f0ae";
+<form action="/toggleMotor"><button class="%BTNCLASS%">%BTNTEXT%</button></form>
+<form action="/toggleMode"><button class="auto">Toggle Auto / Manual</button></form>
 
-    document.getElementById("status").innerText = statusText;
-    document.getElementById("status").style.color = statusColor;
-
-    document.getElementById("motor").innerText = motorOn ? "ON" : "OFF";
-
-    let btn = document.getElementById("motorBtn");
-    btn.innerText = motorOn ? "Turn Motor OFF" : "Turn Motor ON";
-    btn.className = motorOn ? "off" : "on";
-  }
-
-  updateFakeData();
-  setInterval(updateFakeData, 3000);
-</script>
-
+</div>
 </body>
 </html>
 )rawliteral";
 
+  html.replace("%MOISTURE%", String(moisturePercent));
+  html.replace("%STATUS%", status);
+  html.replace("%COLOR%", statusColor);
+  html.replace("%TEMP%", isnan(temperature) ? "N/A" : String(temperature,1));
+  html.replace("%HUM%", isnan(humidity) ? "N/A" : String(humidity,1));
+  html.replace("%MOTOR%", motorState ? "ON" : "OFF");
+  html.replace("%MODE%", autoMode ? "AUTO" : "MANUAL");
+  html.replace("%BTNTEXT%", motorState ? "Turn Motor OFF" : "Turn Motor ON");
+  html.replace("%BTNCLASS%", motorState ? "off" : "on");
+
   server.send(200, "text/html", html);
 }
 
-/* -------- Setup -------- */
+/* ------------ Controls ------------ */
+void toggleMotor() {
+  if (!autoMode) {
+    motorState = !motorState;
+    digitalWrite(MOTOR_PIN, motorState ? HIGH : LOW);
+  }
+  server.sendHeader("Location", "/");
+  server.send(303);
+}
+
+void toggleMode() {
+  autoMode = !autoMode;
+  server.sendHeader("Location", "/");
+  server.send(303);
+}
+
+/* ------------ Setup ------------ */
 void setup() {
   Serial.begin(115200);
 
-  WiFi.begin(ssid, password);
-  Serial.print("Connecting to WiFi");
+  pinMode(MOTOR_PIN, OUTPUT);
+  digitalWrite(MOTOR_PIN, LOW);
 
+  dht.begin();
+
+  WiFi.begin(ssid, password);
+  Serial.print("Connecting");
   while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
+    delay(500); Serial.print(".");
   }
 
-  Serial.println("\nConnected!");
-  Serial.print("ESP32 IP Address: ");
+  Serial.println("\nWiFi Connected");
   Serial.println(WiFi.localIP());
 
   server.on("/", handleRoot);
+  server.on("/toggleMotor", toggleMotor);
+  server.on("/toggleMode", toggleMode);
   server.begin();
 }
 
-/* -------- Loop -------- */
+/* ------------ Loop ------------ */
 void loop() {
   server.handleClient();
 }
